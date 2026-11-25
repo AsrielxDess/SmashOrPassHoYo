@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smash or Pass — Genshin &amp; ZZZ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Marcellus&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+<style>
+/* ============ Design system "Salle des vœux" (voir DESIGN.md) ============ */
+:root{
+  --smash:#1FAF6E; --smash-ink:#06281A;
+  --pass:#D8423B;  --pass-ink:#2E0907;
+  --body:'Satoshi',system-ui,sans-serif;
+  --ease-out:cubic-bezier(.2,.8,.2,1);
+}
+/* Genshin : nuit bleue, or, capitales gravées */
+body, body[data-game=genshin]{
+  --bg:#0E1424; --bg-2:#131B30; --surface:#18213A; --line:#2A3553;
+  --text:#F2EADB; --muted:#8E97AC; --accent:#CFA867; --on-accent:#1A1406;
+  --display:'Marcellus',Georgia,serif; --display-case:uppercase; --display-track:.06em;
+  --radius:3px; --skew:0deg;
+}
+/* ZZZ : asphalte, jaune signal, condensé de rue */
+body[data-game=zzz]{
+  --bg:#121212; --bg-2:#181816; --surface:#1E1E1B; --line:#34342F;
+  --text:#F1EFE6; --muted:#8B8A82; --accent:#F2D40C; --on-accent:#141200;
+  --display:'Anton',Impact,sans-serif; --display-case:uppercase; --display-track:.01em;
+  --radius:0px; --skew:-8deg;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:var(--bg); color:var(--text); font:400 16px/1.5 var(--body);
+  display:flex; flex-direction:column; min-height:100vh;
+  transition:background-color .4s var(--ease-out), color .4s;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.screen{display:none;flex:1;width:100%}
+.screen.on{display:flex}
+
+/* ---------- Header ---------- */
+header{display:none;align-items:center;gap:20px;padding:14px clamp(16px,3vw,40px);position:relative;z-index:5}
+body.playing header{display:flex}
+.brand{font-family:var(--display);text-transform:uppercase;letter-spacing:var(--display-track);font-size:18px;
+  background:none;border:0;color:var(--text);cursor:pointer;padding:0;display:flex;align-items:center;gap:8px}
+.brand i{font-style:normal;color:var(--accent);font-size:12px}
+.hud{flex:1;display:flex;align-items:center;gap:14px;min-width:0}
+.track{flex:1;height:2px;background:var(--line);position:relative;max-width:520px}
+.track b{position:absolute;left:0;top:0;bottom:0;background:var(--accent);width:0;transition:width .35s var(--ease-out)}
+.track b::after{content:"";position:absolute;right:-5px;top:-4px;width:10px;height:10px;background:var(--accent);transform:rotate(45deg)}
+body[data-game=zzz] .track{height:6px;background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 13px)}
+body[data-game=zzz] .track b{background:repeating-linear-gradient(90deg,var(--accent) 0 10px,transparent 10px 13px)}
+body[data-game=zzz] .track b::after{display:none}
+.status{font-size:14px;color:var(--muted);white-space:nowrap}
+.status b{color:var(--text);font-weight:700}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--radius);padding:2px;background:var(--bg-2)}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:13px;padding:6px 12px;cursor:pointer;border-radius:var(--radius)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+
+/* ---------- Interrupteur 3D / Image ---------- */
+.viewwrap{display:flex;align-items:center;gap:12px}
+.viewlabel{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.viewswitch{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;
+  border:1px solid var(--accent);border-radius:var(--radius);background:var(--bg-2);
+  transform:skewX(var(--skew));box-shadow:0 4px 0 rgba(0,0,0,.35)}
+.viewswitch .knob{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);background:var(--accent);
+  border-radius:var(--radius);transition:transform .32s var(--ease-out)}
+.viewswitch[data-v=img] .knob{transform:translateX(100%)}
+.viewswitch button{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  border:0;background:none;cursor:pointer;padding:9px 18px;min-width:108px;color:var(--text);
+  font-family:var(--display);text-transform:uppercase;letter-spacing:var(--display-track);font-size:17px;line-height:1;
+  transition:color .25s}
+.viewswitch button > *{transform:skewX(calc(var(--skew) * -1))}
+.viewswitch button svg{width:18px;height:18px;flex:none}
+.viewswitch button.on{color:var(--on-accent)}
+.viewswitch button:not(.on):hover{color:var(--accent)}
+/* Genshin : un losange marque l'option active */
+body[data-game=genshin] .viewswitch button.on span::before{content:"◆ ";font-size:.6em;vertical-align:.25em}
+@media (max-width:860px){ .viewlabel{display:none} .viewswitch button{min-width:0;padding:8px 12px;font-size:15px} }
+
+/* ---------- Boutons ---------- */
+.btn{border:0;cursor:pointer;font-weight:900;font-size:16px;letter-spacing:.04em;text-transform:uppercase;
+  padding:16px 30px;border-radius:var(--radius);color:var(--on-accent);background:var(--accent);
+  transform:skewX(var(--skew));transition:transform .12s var(--ease-out),filter .15s,box-shadow .15s;
+  box-shadow:0 6px 0 rgba(0,0,0,.35)}
+.btn > span{display:inline-block;transform:skewX(calc(var(--skew) * -1))}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:skewX(var(--skew)) translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1px var(--accent)}
+.linkbtn{background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px;padding:6px 2px;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{color:var(--text)}
+
+/* ---------- Accueil : deux portails ---------- */
+#s-intro{flex-direction:column}
+.portals{flex:1;display:flex;min-height:100vh}
+.portal{flex:1;position:relative;overflow:hidden;border:0;padding:0;cursor:pointer;text-align:left;color:inherit;
+  transition:flex .6s var(--ease-out);display:flex;flex-direction:column;justify-content:flex-end}
+.portal:hover,.portal:focus-visible{flex:1.35}
+.portal .art{position:absolute;inset:0;display:flex}
+.portal .art img{flex:1;min-width:0;height:100%;object-fit:cover;opacity:.55;transition:opacity .5s,transform .8s var(--ease-out)}
+.portal:hover .art img{opacity:.8;transform:scale(1.04)}
+.portal .copy{position:relative;padding:0 clamp(20px,4vw,56px) clamp(28px,7vh,72px)}
+.portal h2{margin:0;line-height:.95;font-weight:400}
+.portal p{margin:14px 0 22px;max-width:30ch;color:var(--muted)}
+.portal .cta{display:inline-flex;align-items:center;gap:10px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;font-size:14px}
+.p-genshin{background:#0E1424;color:#F2EADB}
+.p-genshin .art{mask-image:linear-gradient(to top,transparent 0%,#000 55%);-webkit-mask-image:linear-gradient(to top,transparent 0%,#000 55%)}
+.p-genshin .art img{object-position:50% 25%}
+.p-genshin h2{font-family:'Marcellus',serif;text-transform:uppercase;letter-spacing:.06em;font-size:clamp(40px,6vw,84px)}
+.p-genshin h2 small{display:block;font-size:.42em;letter-spacing:.3em;color:#CFA867;margin-top:6px}
+.p-genshin .cta{color:#CFA867}
+.p-genshin .rule{display:flex;align-items:center;gap:10px;color:#CFA867;margin-bottom:18px}
+.p-genshin .rule::before,.p-genshin .rule::after{content:"";height:1px;width:60px;background:#CFA867}
+.p-zzz{background:#121212;color:#F1EFE6}
+.p-zzz .art{mask-image:linear-gradient(to top,transparent 0%,#000 60%);-webkit-mask-image:linear-gradient(to top,transparent 0%,#000 60%)}
+.p-zzz .art img{object-fit:contain;object-position:50% 100%;opacity:.9}
+.p-genshin .art{gap:2px}
+.p-zzz h2{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(46px,7vw,100px);letter-spacing:.01em}
+.p-zzz h2 small{display:inline-block;font-size:.36em;background:#F2D40C;color:#141200;padding:2px 10px;margin-top:8px;transform:skewX(-8deg)}
+.p-zzz .cta{color:#F2D40C}
+.p-zzz .tape{position:absolute;left:-10%;right:-10%;top:118px;height:28px;transform:rotate(-4deg);
+  background:repeating-linear-gradient(-45deg,#F2D40C 0 18px,#141200 18px 36px);opacity:.9}
+.intro-strip{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:24px;
+  padding:18px clamp(20px,4vw,56px) 40px;z-index:3;pointer-events:none;
+  background:linear-gradient(rgba(8,10,18,.92),rgba(8,10,18,.6) 60%,transparent)}
+.intro-strip .brand{pointer-events:auto;color:#F2EADB}
+.intro-strip .rules{color:#C9C4B8;font-size:14px;max-width:52ch;text-align:right}
+.intro-strip .rules b{color:#F2EADB}
+
+/* ---------- Vote : la scène ---------- */
+#s-vote{display:none;grid-template-columns:minmax(280px,34%) 1fr;gap:0;padding:0 clamp(16px,3vw,40px) 24px;align-items:stretch}
+#s-vote.on{display:grid}
+.side{display:flex;flex-direction:column;justify-content:flex-end;gap:18px;padding:20px 0 8px;min-width:0;position:relative;z-index:3}
+.who .region{display:flex;align-items:center;gap:10px;color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.18em;text-transform:uppercase}
+.who .region::before{content:"";width:9px;height:9px;border:1px solid var(--accent);transform:rotate(45deg)}
+body[data-game=zzz] .who .region::before{border:0;width:18px;height:6px;background:var(--accent);transform:skewX(-20deg)}
+.who h2{font-family:var(--display);text-transform:var(--display-case);letter-spacing:var(--display-track);font-weight:400;
+  font-size:clamp(40px,5.4vw,84px);line-height:.98;margin:10px 0 0;word-break:break-word}
+.who .rule{height:1px;width:120px;background:var(--accent);margin-top:18px;position:relative}
+.who .rule::after{content:"";position:absolute;left:120px;top:-4px;width:9px;height:9px;background:var(--accent);transform:rotate(45deg)}
+body[data-game=zzz] .who .rule{height:4px;width:72px}
+body[data-game=zzz] .who .rule::after{display:none}
+.who .meta{margin-top:14px;color:var(--muted);font-size:14px}
+.who .meta b{color:var(--text)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.vbtn{border:0;cursor:pointer;padding:20px 10px;font-weight:900;font-size:20px;letter-spacing:.08em;text-transform:uppercase;
+  border-radius:var(--radius);transform:skewX(var(--skew));transition:transform .1s var(--ease-out),filter .15s,box-shadow .12s;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.vbtn span{transform:skewX(calc(var(--skew) * -1));display:block}
+.vbtn small{font-size:11px;font-weight:700;letter-spacing:.12em;opacity:.7;transform:skewX(calc(var(--skew) * -1))}
+.vbtn.pass{background:var(--pass);color:#fff;box-shadow:0 6px 0 var(--pass-ink)}
+.vbtn.smash{background:var(--smash);color:#fff;box-shadow:0 6px 0 var(--smash-ink)}
+.vbtn:hover{filter:brightness(1.08)}
+.vbtn:active,.vbtn.hit{transform:skewX(var(--skew)) translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.subactions{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.notice{border:1px solid var(--accent);color:var(--text);background:var(--bg-2);padding:10px 14px;border-radius:var(--radius);font-size:14px;display:none}
+
+.stage{position:relative;min-height:min(78vh,720px);display:flex;align-items:stretch;justify-content:center;overflow:clip}
+html,body{overflow-x:clip}
+.stage::before{ /* sol de la scène : ombre décalée, pas de halo */
+  content:"";position:absolute;left:18%;right:18%;bottom:4%;height:7%;border-radius:50%;
+  background:rgba(0,0,0,.45);filter:blur(10px);transform:translateY(8px)}
+.backdrop{position:absolute;inset:6% 10% 10%;pointer-events:none}
+body[data-game=genshin] .backdrop{border:1px solid var(--line);transform:rotate(45deg) scale(.62);opacity:.9}
+body[data-game=genshin] .backdrop::after{content:"";position:absolute;inset:7%;border:1px solid var(--line)}
+body[data-game=zzz] .backdrop{inset:auto -6% 18% -6%;height:120px;transform:rotate(-6deg);
+  background:repeating-linear-gradient(-45deg,rgba(242,212,12,.14) 0 22px,transparent 22px 44px)}
+.char{position:relative;flex:1;transition:transform .32s var(--ease-in, ease-in),opacity .32s}
+.char img.art, .char model-viewer{position:absolute;inset:0;width:100%;height:100%}
+.char model-viewer{--poster-color:transparent;background:transparent}
+.char img.art{object-fit:cover;object-position:55% 22%} /* splash arts détourées : elles posent directement sur la scène */
+body[data-game=zzz] .char img.art{object-fit:contain;object-position:50% 100%}
+/* Zoom sur la splash art */
+.char{overflow:hidden}
+.char img.art{transform-origin:0 0;will-change:transform;cursor:zoom-in;user-select:none;-webkit-user-drag:none;touch-action:none}
+.char.zoomed img.art{cursor:grab}
+.char.zoomed.dragging img.art{cursor:grabbing}
+.zoombar{position:absolute;right:0;bottom:3%;z-index:5;display:flex;align-items:center;gap:2px;padding:3px;
+  background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);transform:skewX(var(--skew));
+  box-shadow:0 4px 0 rgba(0,0,0,.35)}
+.zoombar button{border:0;background:none;color:var(--text);cursor:pointer;width:36px;height:32px;font-size:20px;font-weight:700;
+  border-radius:var(--radius);display:flex;align-items:center;justify-content:center}
+.zoombar button:hover{background:var(--accent);color:var(--on-accent)}
+.zoombar button:disabled{opacity:.35;cursor:default;background:none;color:var(--text)}
+.zoombar .lvl{min-width:62px;font-family:var(--display);letter-spacing:var(--display-track);font-size:15px;width:auto;padding:0 8px}
+.zoombar > *{transform:skewX(calc(var(--skew) * -1))}
+.zoomhint{position:absolute;right:0;bottom:calc(3% + 46px);z-index:5;font-size:12px;color:var(--muted);pointer-events:none;transition:opacity .4s}
+.char .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:140px;color:var(--line)}
+.char.out-left{transform:translateX(-18%) rotate(-4deg);opacity:0}
+.char.out-right{transform:translateX(18%) rotate(4deg);opacity:0}
+.stage-tools{position:absolute;right:0;bottom:6%;display:none;z-index:4}
+.badge3d{position:absolute;right:0;top:8px;font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--muted);z-index:4}
+
+/* Le rideau : le moment de la révélation */
+.curtain{position:absolute;inset:0;z-index:6;pointer-events:none;display:flex}
+.curtain i{flex:1;background:var(--bg);transition:transform .55s var(--ease-out)}
+body[data-game=genshin] .curtain i:first-child{border-right:1px solid var(--accent)}
+body[data-game=genshin] .curtain i:last-child{border-left:1px solid var(--accent)}
+.curtain.open i:first-child{transform:translateX(-101%)}
+.curtain.open i:last-child{transform:translateX(101%)}
+body[data-game=zzz] .curtain{display:block}
+body[data-game=zzz] .curtain i{position:absolute;inset:0;background:var(--accent);transform:skewX(-14deg) translateX(0)}
+body[data-game=zzz] .curtain.open i:first-child{transform:skewX(-14deg) translateX(130%)}
+body[data-game=zzz] .curtain i:last-child{display:none}
+
+/* Le tampon */
+.stamp{position:absolute;left:50%;top:38%;z-index:7;pointer-events:none;font-family:var(--display);font-weight:400;
+  font-size:clamp(56px,8vw,120px);letter-spacing:.06em;text-transform:uppercase;padding:.05em .3em;
+  border:6px double currentColor;border-radius:6px;opacity:0;transform:translate(-50%,-50%) rotate(-12deg) scale(1.7);
+  background:rgba(8,10,18,.35);text-shadow:0 3px 0 rgba(0,0,0,.45);
+  -webkit-mask-image:radial-gradient(circle at 30% 40%,#000 55%,rgba(0,0,0,.55) 56%,#000 70%);
+  mask-image:radial-gradient(circle at 30% 40%,#000 55%,rgba(0,0,0,.55) 56%,#000 70%)}
+.stamp.smash{color:var(--smash)} .stamp.pass{color:var(--pass);transform:translate(-50%,-50%) rotate(10deg) scale(1.7)}
+.stamp.slam{opacity:.95;transform:translate(-50%,-50%) rotate(-12deg) scale(1);transition:transform .14s var(--ease-out),opacity .08s}
+.stamp.pass.slam{transform:translate(-50%,-50%) rotate(10deg) scale(1)}
+
+/* ---------- Vignettes portrait ---------- */
+.thumb{position:relative;width:var(--tw,64px);aspect-ratio:2/3;background:var(--surface);overflow:hidden;flex:none;
+  border-radius:var(--radius);box-shadow:0 4px 0 rgba(0,0,0,.3)}
+.thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;transform:scale(1.5);transform-origin:50% 22%}
+body[data-game=zzz] .thumb img{object-position:50% 0;transform:scale(1.25);transform-origin:50% 0}
+.thumb .ini{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);color:var(--muted)}
+.thumb .nm{position:absolute;left:0;right:0;bottom:0;padding:16px 6px 5px;font-size:11px;font-weight:700;line-height:1.15;
+  background:linear-gradient(transparent,rgba(0,0,0,.85));color:#fff;text-align:left}
+
+/* ---------- Entre deux rounds ---------- */
+#s-round{align-items:center;justify-content:center;padding:24px clamp(16px,4vw,56px)}
+.roundbox{width:100%;max-width:1000px;display:grid;grid-template-columns:auto 1fr;gap:12px 40px;align-items:end}
+.roundbox .big{font-family:var(--display);font-size:clamp(110px,16vw,220px);line-height:.8;color:var(--accent)}
+.roundbox h2{font-family:var(--display);text-transform:uppercase;letter-spacing:var(--display-track);font-weight:400;font-size:clamp(28px,3.4vw,46px);margin:0;line-height:1.05}
+.roundbox p{margin:10px 0 0;color:var(--muted);max-width:46ch}
+.roundbox .thumbs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 18px;--tw:70px}
+.roundbox .go{grid-column:1/-1}
+
+/* ---------- Classement ---------- */
+#s-rank{flex-direction:column;padding:12px clamp(16px,4vw,56px) 32px;align-items:flex-start}
+.titleblock h2{font-family:var(--display);text-transform:uppercase;letter-spacing:var(--display-track);font-weight:400;font-size:clamp(34px,4.4vw,60px);margin:0;line-height:1}
+.titleblock p{color:var(--muted);margin:10px 0 0}
+.rankgrid{display:flex;gap:14px;width:100%;margin:28px 0 20px;align-items:stretch}
+.rk{flex:1;min-width:0;position:relative;aspect-ratio:3/4.4;max-height:62vh;border:0;padding:0;cursor:pointer;background:var(--surface);
+  overflow:hidden;border-radius:var(--radius);box-shadow:0 8px 0 rgba(0,0,0,.3);transition:transform .15s var(--ease-out),opacity .2s}
+.rk:hover{transform:translateY(-6px)}
+.rk img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+body[data-game=zzz] .rk img{object-position:50% 0}
+.rk .lbl{position:absolute;left:0;right:0;bottom:0;padding:40px 14px 14px;background:linear-gradient(transparent,rgba(0,0,0,.88));
+  font-family:var(--display);text-transform:uppercase;letter-spacing:var(--display-track);font-size:20px;color:#fff;text-align:left}
+.rk .num{position:absolute;top:10px;left:12px;font-family:var(--display);font-size:64px;line-height:1;color:var(--accent);display:none;
+  text-shadow:0 3px 0 rgba(0,0,0,.6)}
+.rk.picked{opacity:.6}
+.rk.picked .num{display:block}
+
+/* ---------- Pyramide ---------- */
+#s-result{flex-direction:column;padding:12px clamp(16px,4vw,56px) 40px;align-items:center}
+#s-result .titleblock{align-self:flex-start}
+.pyramid{width:100%;max-width:1100px;display:flex;flex-direction:column;align-items:center;gap:18px;margin-top:26px}
+.tier{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.tier .tag{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.tier .tag::before,.tier .tag::after{content:"";height:1px;width:40px;background:var(--line)}
+.tier .row{display:flex;justify-content:center;flex-wrap:wrap;gap:12px}
+.tier.t1 .row{--tw:190px} .tier.t2 .row{--tw:130px} .tier.t3 .row{--tw:104px}
+.tier.t1 .tag{color:var(--accent)} .tier.t1 .tag::before,.tier.t1 .tag::after{background:var(--accent)}
+.tier.t1 .thumb{box-shadow:0 0 0 2px var(--accent),0 10px 0 rgba(0,0,0,.35)}
+.tier.t1 .thumb .nm{font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:var(--display-track);padding:40px 12px 12px}
+.tier.t2 .thumb .nm{font-size:14px}
+.tier.elim .row{gap:0;padding-left:18px}
+.tier.elim .thumb{margin-left:-18px;box-shadow:-4px 0 10px rgba(0,0,0,.45)}
+.tier.elim .thumb .nm{font-size:10px}
+.endbtns{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap;justify-content:center}
+
+footer{color:var(--muted);font-size:11px;padding:14px clamp(16px,3vw,40px);line-height:1.5;opacity:.8}
+footer a{color:inherit}
+
+/* ---------- Petits écrans ---------- */
+@media (max-width:860px){
+  .portals{flex-direction:column}
+  .portal{min-height:50vh}
+  .intro-strip{position:static;flex-direction:column;align-items:flex-start;gap:6px;background:#0E1424}
+  .intro-strip .rules{text-align:left}
+  #s-vote.on{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+  .side{display:contents}
+  .who{order:1;padding-top:6px} .stage{order:2;min-height:52vh} .controls{order:3}
+  .who h2{font-size:clamp(32px,9vw,48px)}
+  .hud .track{display:none}
+  .rankgrid{flex-wrap:wrap} .rk{flex:1 1 40%}
+  .roundbox{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+</style>
+</head>
+<body data-game="genshin">
+
+<header>
+  <button class="brand" id="homeBtn" title="Retour à l'accueil">Smash <i>◆</i> Pass</button>
+  <div class="hud">
+    <div class="track"><b id="bar"></b></div>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="viewwrap">
+    <span class="viewlabel">Affichage</span>
+    <div class="viewswitch" id="viewSel" role="radiogroup" aria-label="Affichage des persos">
+      <i class="knob"></i>
+      <button data-v="3d" role="radio">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 3.5 7v10L12 21.5 20.5 17V7L12 2.5Zm0 0v9m0 10v-10m0 0L3.5 7m8.5 4.5L20.5 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span>3D</span>
+      </button>
+      <button data-v="img" role="radio">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m3.5 16 5-5 4 4 3-3 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.5" cy="9" r="1.6" fill="currentColor"/></svg>
+        <span>Image</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main style="flex:1;display:flex">
+  <!-- Accueil -->
+  <section class="screen on" id="s-intro">
+    <div class="intro-strip">
+      <span class="brand">Smash <i>◆</i> Pass</span>
+      <span class="rules">Chaque perso féminine passe devant toi : <b>smash</b> ou <b>pass</b>.
+        Celles que tu gardes repartent pour un round, jusqu'à ce qu'il en reste cinq. Tu les classes, puis tu obtiens ta pyramide.</span>
+    </div>
+    <div class="portals" id="gamePick"></div>
+  </section>
+
+  <!-- Vote -->
+  <section class="screen" id="s-vote">
+    <div class="side">
+      <div class="who" id="who"></div>
+      <div class="controls">
+        <div class="notice" id="notice"></div>
+        <div class="actions">
+          <button class="vbtn pass" id="bPass"><span>Pass</span><small>← flèche gauche</small></button>
+          <button class="vbtn smash" id="bSmash"><span>Smash</span><small>flèche droite →</small></button>
+        </div>
+        <div class="subactions">
+          <button class="linkbtn" id="undo">↶ Reprendre le dernier vote</button>
+        </div>
+      </div>
+    </div>
+    <div class="stage" id="stage"></div>
+  </section>
+
+  <!-- Entre deux rounds -->
+  <section class="screen" id="s-round">
+    <div class="roundbox">
+      <div class="big" id="roundCount"></div>
+      <div>
+        <h2 id="roundTitle"></h2>
+        <p id="roundText"></p>
+      </div>
+      <div class="thumbs" id="roundThumbs"></div>
+      <div class="go"><button class="btn" id="nextRound"><span></span></button></div>
+    </div>
+  </section>
+
+  <!-- Classement -->
+  <section class="screen" id="s-rank">
+    <div class="titleblock">
+      <h2>Classe ton top</h2>
+      <p>Clique dans l'ordre de préférence, ta préférée en premier. Reclique pour corriger.</p>
+    </div>
+    <div class="rankgrid" id="rankGrid"></div>
+    <button class="linkbtn" id="rankReset">Recommencer le classement</button>
+  </section>
+
+  <!-- Pyramide -->
+  <section class="screen" id="s-result">
+    <div class="titleblock">
+      <h2>Ta pyramide</h2>
+      <p id="resultSub">De la mieux notée, en haut, à la première éliminée, en bas.</p>
+    </div>
+    <div class="pyramid" id="pyramid"></div>
+    <div class="endbtns">
+      <button class="btn" id="restart"><span>Rejouer</span></button>
+      <button class="btn ghost" id="changeGame"><span>Changer de jeu</span></button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Modèles 3D officiels © miHoYo / HoYoverse (usage perso, non redistribués) ·
+  Animation de marche : « Basic Cycle Motions 1 (Walking) » par <a href="https://www.deviantart.com/metra-philia" target="_blank" rel="noopener">Metra-Philia</a>, licence CC BY-NC-SA ·
+  Images : Enka.Network
+</footer>
+
+<script>
+/* ---------- Characters ----------
+   img : splash art / portrait (Enka CDN)
+   Modèle 3D optionnel : dépose models/<id>.glb (Genshin) ou models/zzz/<id>.glb (ZZZ),
+   il remplace l'image.
+   Les persos au gabarit enfant / petit gabarit sont volontairement exclus :
+   Genshin : Klee, Qiqi, Nahida, Diona, Sayu, Yaoyao, Dori, Sigewinne, Kachina…
+   ZZZ : tous les « Female_Size01 » et « Size00 » (Soukaku, Corin, Lucy, Piper, Koleda…). */
+const GENSHIN = [
+  ["amber","Amber","Ambor","Mondstadt"],["barbara","Barbara","Barbara","Mondstadt"],
+  ["jean","Jean","Qin","Mondstadt"],["lisa","Lisa","Lisa","Mondstadt"],
+  ["fischl","Fischl","Fischl","Mondstadt"],["noelle","Noelle","Noel","Mondstadt"],
+  ["mona","Mona","Mona","Mondstadt"],["rosaria","Rosaria","Rosaria","Mondstadt"],
+  ["eula","Eula","Eula","Mondstadt"],["lumine","Lumine","PlayerGirl","Voyageuse"],
+  ["beidou","Beidou","Beidou","Liyue"],["ningguang","Ningguang","Ningguang","Liyue"],
+  ["xiangling","Xiangling","Xiangling","Liyue"],["keqing","Keqing","Keqing","Liyue"],
+  ["xinyan","Xinyan","Xinyan","Liyue"],["yanfei","Yanfei","Feiyan","Liyue"],
+  ["ganyu","Ganyu","Ganyu","Liyue"],["hutao","Hu Tao","Hutao","Liyue"],
+  ["shenhe","Shenhe","Shenhe","Liyue"],["yunjin","Yun Jin","Yunjin","Liyue"],
+  ["yelan","Yelan","Yelan","Liyue"],["xianyun","Xianyun","Liuyun","Liyue"],
+  ["lanyan","Lan Yan","Lanyan","Liyue"],
+  ["ayaka","Kamisato Ayaka","Ayaka","Inazuma"],["yoimiya","Yoimiya","Yoimiya","Inazuma"],
+  ["sara","Kujou Sara","Sara","Inazuma"],["raiden","Raiden Shogun","Shougun","Inazuma"],
+  ["kokomi","Sangonomiya Kokomi","Kokomi","Inazuma"],["yae","Yae Miko","Yae","Inazuma"],
+  ["shinobu","Kuki Shinobu","Shinobu","Inazuma"],["kirara","Kirara","Momoka","Inazuma"],
+  ["chiori","Chiori","Chiori","Inazuma"],["mizuki","Yumemizuki Mizuki","Mizuki","Inazuma"],
+  ["collei","Collei","Collei","Sumeru"],["candace","Candace","Candace","Sumeru"],
+  ["nilou","Nilou","Nilou","Sumeru"],["layla","Layla","Layla","Sumeru"],
+  ["faruzan","Faruzan","Faruzan","Sumeru"],["dehya","Dehya","Dehya","Sumeru"],
+  ["lynette","Lynette","Linette","Fontaine"],["furina","Furina","Furina","Fontaine"],
+  ["navia","Navia","Navia","Fontaine"],["chevreuse","Chevreuse","Chevreuse","Fontaine"],
+  ["charlotte","Charlotte","Charlotte","Fontaine"],["arlecchino","Arlecchino","Arlecchino","Fontaine"],
+  ["clorinde","Clorinde","Clorinde","Fontaine"],["emilie","Emilie","Emilie","Fontaine"],
+  ["escoffier","Escoffier","Escoffier","Fontaine"],
+  ["mualani","Mualani","Mualani","Natlan"],["xilonen","Xilonen","Xilonen","Natlan"],
+  ["chasca","Chasca","Chasca","Natlan"],["citlali","Citlali","Citlali","Natlan"],
+  ["mavuika","Mavuika","Mavuika","Natlan"],["varesa","Varesa","Varesa","Natlan"],
+  ["skirk","Skirk","SkirkNew","Snezhnaya"],
+  ["ineffa","Ineffa","Ineffa","Nod-Krai"],["lauma","Lauma","Lauma","Nod-Krai"],
+  ["nefer","Nefer","Nefer","Nod-Krai"],
+  ["aloy","Aloy","Aloy","Invitée"],
+].map(([id,name,key,region])=>({id,name,region,img:`https://enka.network/ui/UI_Gacha_AvatarImg_${key}.png`}));
+
+const ZZZ = [
+  ["anby","Anby","01","Cunning Hares"],["nicole","Nicole","12","Cunning Hares"],["soldier11","Soldier 11","05","Obol Squad"],
+  ["yidhari","Yidhari","52","Spook Shack"],["caesar","Caesar","25","Sons of Calydon"],["miyabi","Miyabi","13","Section 6"],
+  ["burnice","Burnice","32","Sons of Calydon"],["grace","Grace","20","Belobog"],["ellen","Ellen","21","Victoria Housekeeping"],
+  ["rina","Rina","22","Victoria Housekeeping"],["yanagi","Yanagi","31","Section 6"],["zhuyuan","Zhu Yuan","23","Police de New Eridu"],
+  ["jane","Jane","24","Police de New Eridu"],["orphie","Orphie","49","Obol Squad"],["astrayao","Astra Yao","36","Stars of Lyra"],
+  ["evelyn","Evelyn","37","Stars of Lyra"],["vivian","Vivian","41","Mockingbird"],["pulchra","Pulchra","38","Sons of Calydon"],
+  ["trigger","Trigger","39","Obol Squad"],["yixuan","Yixuan","44","Yunkui Summit"],["soldier0anby","Soldier 0 - Anby","40","Obol Squad"],
+  ["alice","Alice","46","Spook Shack"],["yuzuha","Yuzuha","47","Spook Shack"],["yeshunguang","Ye Shunguang","55","Yunkui Summit"],
+  ["lucia","Lucia","50","Spook Shack"],["seed","Seed","48","Obol Squad"],["cissia","Cissia","60","Metropolitan Order"],
+  ["promeia","Promeia","61","Krampus Compliance"],["velina","Velina","64","Roscaelifer"],["remielle","Remielle","67","Covenant of Dayat"],
+  ["sigrid","Sigrid","66","Airspace Patrol"],["claret","Claret","1611","Flint Workshop"],["phoenix","Phoenix","1641","Agent"],
+].map(([id,name,key,region])=>({id,name,region,img:`https://enka.network/ui/zzz/IconRole${key}.png`}));
+
+const GAMES = {
+  genshin:{label:'Genshin Impact', short:'Genshin', chars:GENSHIN, models:'models/'},
+  zzz:    {label:'Zenless Zone Zero', short:'ZZZ', chars:ZZZ, models:'models/zzz/'},
+};
+let GAME, CHARS, BY_ID;
+function setGame(g){
+  GAME=GAMES[g]; CHARS=GAME.chars; BY_ID=Object.fromEntries(CHARS.map(c=>[c.id,c]));
+  document.body.dataset.game=g;
+}
+const TARGET = 5;
+const ANIM = 'Idle';   // animation jouée par les modèles 3D (le .glb contient aussi 'Walk')
+let VIEW = localStorage.getItem('sop-view') || '3d';     // '3d' : modèle 3D si dispo · 'img' : splash art
+
+/* ---------- State ---------- */
+let S;
+function fresh(){
+  return {round:1, pool:shuffle(CHARS.map(c=>c.id)), i:0, smashed:[], history:[], eliminated:[], ranking:[]};
+}
+function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+
+const $ = s=>document.getElementById(s);
+function show(id){
+  document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));
+  document.body.classList.toggle('playing', id!=='s-intro');
+  window.scrollTo(0,0);
+}
+function setStatus(t){$('status').innerHTML=t}
+
+/* ---------- 3D model detection ---------- */
+const modelCache = {};
+const modelPath = id => `${GAME.models}${id}.glb`;
+async function hasModel(id){
+  const p=modelPath(id);
+  if(p in modelCache) return modelCache[p];
+  if(location.protocol==='file:'){ return modelCache[p]=false; } // fetch bloqué en file://
+  try{ const r=await fetch(p,{method:'HEAD'}); modelCache[p]=r.ok; }
+  catch{ modelCache[p]=false; }
+  return modelCache[p];
+}
+function preloadNext(){ for(let k=1;k<=3;k++){ const id=S.pool[S.i+k]; if(id){ const i=new Image(); i.src=BY_ID[id].img; } } }
+
+function initials(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2)}
+function thumb(c, withName=true){
+  return `<div class="thumb"><div class="ini">${initials(c.name)}</div><img src="${c.img}" alt="" loading="lazy" onerror="this.remove()">${withName?`<div class="nm">${c.name}</div>`:''}</div>`;
+}
+
+/* ---------- Vote ---------- */
+let renderToken=0;
+async function renderCard(){
+  const tok=++renderToken;
+  const id=S.pool[S.i], c=BY_ID[id];
+  setStatus(`Round <b>${S.round}</b> · ${S.i+1} / ${S.pool.length} · <b>${S.smashed.length}</b> gardée${S.smashed.length>1?'s':''}`);
+  $('bar').style.width=(S.i/S.pool.length*100)+'%';
+  $('who').innerHTML=`<div class="region">${c.region}</div><h2>${c.name}</h2><div class="rule"></div>
+    <div class="meta">Round ${S.round} · reste <b>${S.pool.length-S.i}</b> à voir</div>`;
+  const stage=$('stage');
+  stage.innerHTML=`<div class="backdrop"></div>
+    <div class="char" id="card">
+      <div class="fallback">${initials(c.name)}</div>
+      <img class="art" src="${c.img}" alt="${c.name}" onerror="this.remove()">
+    </div>
+    <div class="stamp smash" id="stS">Smash</div><div class="stamp pass" id="stP">Pass</div>
+    <div class="curtain" id="curtain"><i></i><i></i></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const cu=$('curtain'); if(!cu) return; cu.classList.add('open'); setTimeout(()=>cu.remove(),650);
+  }));
+  preloadNext();
+  if(VIEW==='3d' && await hasModel(id) && tok===renderToken && VIEW==='3d'){
+    const card=$('card'); card.querySelector('img')?.remove(); card.querySelector('.fallback')?.remove();
+    card.insertAdjacentHTML('afterbegin',`<model-viewer src="${modelPath(id)}" loading="eager" reveal="auto" camera-controls auto-rotate rotation-per-second="18deg" autoplay animation-name="${ANIM}" shadow-intensity="1.1" shadow-softness=".8" exposure="1" tone-mapping="neutral" interaction-prompt="none"></model-viewer>`);
+    stage.insertAdjacentHTML('beforeend','<div class="badge3d">3D</div>');
+    const mv=card.querySelector('model-viewer');
+    mv.addEventListener('load',()=>{
+      if(tok!==renderToken) return;
+      const has=mv.availableAnimations||[];
+      if(has.length){ if(!has.includes(ANIM)) mv.animationName=has[0]; mv.play(); }
+    });
+  } else if(tok===renderToken && $('card')?.querySelector('img.art')){
+    bindZoom($('card'));
+  }
+  bindSwipe();
+}
+
+/* ---------- Zoom / déplacement sur la splash art ---------- */
+let Z=null;   // état du zoom de la carte affichée
+function bindZoom(card){
+  const img=card.querySelector('img.art'); if(!img) return;
+  $('stage').insertAdjacentHTML('beforeend',`
+    <div class="zoomhint" id="zoomHint">Molette ou double-clic pour zoomer</div>
+    <div class="zoombar" id="zoomBar">
+      <button data-z="out" title="Dézoomer (−)">−</button>
+      <button class="lvl" data-z="reset" title="Revenir à 100 %">100 %</button>
+      <button data-z="in" title="Zoomer (+)">+</button>
+    </div>`);
+  Z={s:1,tx:0,ty:0,img,card};
+  const MAX=5;
+  const apply=()=>{
+    const w=card.clientWidth,h=card.clientHeight;
+    // l'image reste toujours dans le cadre
+    Z.tx=Math.min(0,Math.max(w-w*Z.s,Z.tx)); Z.ty=Math.min(0,Math.max(h-h*Z.s,Z.ty));
+    img.style.transform=`translate(${Z.tx}px,${Z.ty}px) scale(${Z.s})`;
+    card.classList.toggle('zoomed',Z.s>1.001);
+    const bar=$('zoomBar'); if(!bar) return;
+    bar.querySelector('.lvl').textContent=Math.round(Z.s*100)+' %';
+    bar.querySelector('[data-z=out]').disabled=Z.s<=1.001;
+    bar.querySelector('[data-z=in]').disabled=Z.s>=MAX-.001;
+    if(Z.s>1.001) $('zoomHint')?.style.setProperty('opacity','0');
+  };
+  const zoomAt=(ns,cx,cy)=>{   // cx,cy : point (dans la carte) qui reste fixe
+    ns=Math.min(MAX,Math.max(1,ns));
+    Z.tx=cx-(cx-Z.tx)*(ns/Z.s); Z.ty=cy-(cy-Z.ty)*(ns/Z.s); Z.s=ns; apply();
+  };
+  const center=()=>[card.clientWidth/2,card.clientHeight/2];
+  Z.zoomAt=zoomAt; Z.center=center; Z.apply=apply;
+  const local=e=>{const r=card.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]};
+  card.onwheel=e=>{ e.preventDefault(); const [x,y]=local(e); zoomAt(Z.s*Math.exp(-e.deltaY*0.0015),x,y); };
+  card.ondblclick=e=>{ const [x,y]=local(e); img.style.transition='transform .25s var(--ease-out)';
+    zoomAt(Z.s>1.001?1:2.5,x,y); setTimeout(()=>img.style.transition='',260); };
+  // glisser (souris) et pincer / glisser (tactile)
+  const pts=new Map(); let last=null, pinch=null;
+  card.onpointerdown=e=>{ if(card.dataset.done) return; card.setPointerCapture(e.pointerId); pts.set(e.pointerId,local(e));
+    if(pts.size===1) last=local(e);
+    if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:Z.s}; }
+    if(Z.s>1.001) card.classList.add('dragging'); };
+  card.onpointermove=e=>{ if(!pts.has(e.pointerId)) return; const p=local(e); pts.set(e.pointerId,p);
+    if(pts.size===2 && pinch){ const [a,b]=[...pts.values()]; const d=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      zoomAt(pinch.s*d/pinch.d,(a[0]+b[0])/2,(a[1]+b[1])/2); return; }
+    if(Z.s>1.001 && last){ Z.tx+=p[0]-last[0]; Z.ty+=p[1]-last[1]; apply(); }
+    last=p; };
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(!pts.size){ last=null; card.classList.remove('dragging'); }
+    else last=[...pts.values()][0]; };
+  card.onpointerup=up; card.onpointercancel=up;
+  $('zoomBar').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; const [x,y]=center();
+    img.style.transition='transform .25s var(--ease-out)';
+    if(b.dataset.z==='in') zoomAt(Z.s*1.5,x,y); if(b.dataset.z==='out') zoomAt(Z.s/1.5,x,y); if(b.dataset.z==='reset') zoomAt(1,x,y);
+    setTimeout(()=>img.style.transition='',260); };
+  apply();
+}
+
+function vote(smash){
+  const card=$('card'); if(!card||card.dataset.done) return;
+  card.dataset.done=1;
+  const st=$(smash?'stS':'stP'); st.classList.add('slam');
+  const b=$(smash?'bSmash':'bPass'); b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),160);
+  const id=S.pool[S.i];
+  S.history.push({id,smash});
+  if(smash) S.smashed.push(id);
+  setTimeout(()=>card.classList.add(smash?'out-right':'out-left'),260);
+  setTimeout(()=>{ S.i++; S.i>=S.pool.length ? endRound() : renderCard(); },560);
+}
+function undo(){
+  if(!S.history.length) return;
+  const last=S.history.pop();
+  if(last.smash) S.smashed.pop();
+  S.i--; renderCard();
+}
+
+function endRound(){
+  const n=S.smashed.length, before=S.pool.length;
+  $('notice').style.display='none';
+  if(n===0){
+    notice(`Tu as passé tout le monde. On refait le round ${S.round} avec les mêmes.`);
+    return restartRound(S.pool);
+  }
+  if(n===before && n>TARGET){
+    notice(`Tu as gardé tout le monde. Il faut en passer au moins une pour avancer.`);
+    return restartRound(S.pool);
+  }
+  const passed=S.pool.filter(id=>!S.smashed.includes(id));
+  if(passed.length) S.eliminated.push({round:S.round, ids:passed});
+  const final = n<=TARGET;
+  setStatus(`Fin du round <b>${S.round}</b>`);
+  $('bar').style.width='100%';
+  $('roundCount').textContent=n;
+  $('roundTitle').textContent= final ? (n===1?`Une seule survivante`:`Les ${n} finalistes`) : `Gardées sur ${before}`;
+  $('roundText').textContent= final
+    ? (n===1?`Pas besoin de classement : elle prend la première place.`:`Il reste à les classer de ta préférée à la moins aimée.`)
+    : `Elles repartent pour le round ${S.round+1}. Les autres sont éliminées.`;
+  $('roundThumbs').innerHTML=S.smashed.map(id=>thumb(BY_ID[id])).join('');
+  $('nextRound').firstElementChild.textContent= final ? (n===1?'Voir la pyramide':'Classer le top') : `Lancer le round ${S.round+1}`;
+  $('nextRound').onclick = final ? (n===1?()=>{S.ranking=[...S.smashed];showResult()}:startRanking) : nextRound;
+  show('s-round');
+}
+function notice(t){const n=$('notice');n.textContent=t;n.style.display='block'}
+function restartRound(pool){
+  S.pool=shuffle(pool); S.i=0; S.smashed=[]; S.history=[];
+  show('s-vote'); renderCard();
+}
+function nextRound(){ S.round++; restartRound(S.smashed); }
+
+/* ---------- Swipe (mobile) ---------- */
+function bindSwipe(){
+  const card=$('card'); const stage=$('stage');
+  let sx=null, dx=0;
+  const zoomed=()=>Z && Z.card===card && Z.s>1.001;
+  stage.ontouchstart=e=>{ if(card.querySelector('model-viewer') || e.touches.length>1 || zoomed() || e.target.closest('.zoombar')) return;
+    sx=e.touches[0].clientX; dx=0; card.style.transition='none' };
+  stage.ontouchmove=e=>{ if(sx===null) return; if(e.touches.length>1 || zoomed()){ sx=null; card.style.transform=''; card.style.transition=''; return; }
+    dx=e.touches[0].clientX-sx;
+    card.style.transform=`translateX(${dx}px) rotate(${dx/30}deg)`; };
+  stage.ontouchend=()=>{ if(sx===null) return; card.style.transition=''; sx=null; card.style.transform='';
+    if(dx>90) vote(true); else if(dx<-90) vote(false); };
+}
+
+/* ---------- Classement ---------- */
+function startRanking(){
+  S.ranking=[];
+  setStatus(`Classement · <b>${S.smashed.length}</b> finalistes`);
+  $('rankGrid').innerHTML=S.smashed.map(id=>{const c=BY_ID[id];
+    return `<button class="rk" data-id="${id}"><img src="${c.img}" alt="" onerror="this.remove()"><div class="num"></div><div class="lbl">${c.name}</div></button>`}).join('');
+  $('rankGrid').querySelectorAll('.rk').forEach(el=>el.onclick=()=>{
+    const id=el.dataset.id;
+    if(S.ranking.includes(id)) S.ranking=S.ranking.slice(0,S.ranking.indexOf(id));
+    else S.ranking.push(id);
+    paintRank();
+    if(S.ranking.length===S.smashed.length-1){
+      S.ranking.push(S.smashed.find(x=>!S.ranking.includes(x)));
+      paintRank(); setTimeout(showResult,550);
+    }
+  });
+  show('s-rank');
+}
+function paintRank(){
+  $('rankGrid').querySelectorAll('.rk').forEach(el=>{
+    const k=S.ranking.indexOf(el.dataset.id);
+    el.classList.toggle('picked',k>=0); el.querySelector('.num').textContent=k>=0?k+1:'';
+  });
+}
+
+/* ---------- Pyramide ---------- */
+function showResult(){
+  const r=S.ranking, tiers=[];
+  tiers.push({tag:'Élue',ids:r.slice(0,1),cls:'t1'});
+  if(r.length>1) tiers.push({tag:'Podium · 2 et 3',ids:r.slice(1,3),cls:'t2'});
+  if(r.length>3) tiers.push({tag:'Top 5 · 4 et 5',ids:r.slice(3,5),cls:'t3'});
+  [...S.eliminated].reverse().forEach((e,k)=>{
+    tiers.push({tag:`Éliminées au round ${e.round}`,ids:e.ids,cls:'elim',tw:Math.max(46,78-k*10)});
+  });
+  $('pyramid').innerHTML=tiers.map(t=>`
+    <div class="tier ${t.cls}"><div class="tag">${t.tag}</div>
+      <div class="row"${t.tw?` style="--tw:${t.tw}px"`:''}>${t.ids.map(id=>thumb(BY_ID[id])).join('')}</div>
+    </div>`).join('');
+  $('resultSub').textContent=`${GAME.label} · ${S.round} round${S.round>1?'s':''} · de la mieux notée, en haut, à la première éliminée, en bas.`;
+  setStatus(`Terminé`);
+  $('bar').style.width='100%';
+  show('s-result');
+}
+
+/* ---------- Accueil ---------- */
+const COVERS={genshin:['raiden','furina','yae'], zzz:['ellen','miyabi','jane']};
+function buildPortals(){
+  const g=GAMES.genshin, z=GAMES.zzz;
+  const imgs=(G,ids)=>ids.map(id=>`<img src="${G.chars.find(c=>c.id===id).img}" alt="" onerror="this.remove()">`).join('');
+  $('gamePick').innerHTML=`
+    <button class="portal p-genshin" data-g="genshin">
+      <div class="art">${imgs(g,COVERS.genshin)}</div>
+      <div class="copy">
+        <div class="rule">◆</div>
+        <h2>Genshin<small>Impact</small></h2>
+        <p>${g.chars.length} persos de Teyvat, de Mondstadt à Nod-Krai.</p>
+        <span class="cta">Entrer ◆</span>
+      </div>
+    </button>
+    <button class="portal p-zzz" data-g="zzz">
+      <div class="tape"></div>
+      <div class="art">${imgs(z,COVERS.zzz)}</div>
+      <div class="copy">
+        <h2>Zenless<br>Zone Zero<br><small>New Eridu</small></h2>
+        <p>${z.chars.length} agents de New Eridu.</p>
+        <span class="cta">Entrer →</span>
+      </div>
+    </button>`;
+  $('gamePick').querySelectorAll('.portal').forEach(b=>b.onclick=()=>pickGame(b.dataset.g));
+}
+
+/* ---------- Wiring ---------- */
+function start(){ S=fresh(); $('notice').style.display='none'; show('s-vote'); renderCard(); }
+function pickGame(g){ setGame(g); localStorage.setItem('sop-game',g); start(); }
+function goHome(){ renderToken++; document.body.dataset.game='genshin'; setStatus(''); show('s-intro'); }
+buildPortals();
+$('restart').onclick=start;
+$('changeGame').onclick=goHome;
+$('homeBtn').onclick=goHome;
+const paintView=()=>{ $('viewSel').dataset.v=VIEW;
+  $('viewSel').querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',b.dataset.v===VIEW); b.setAttribute('aria-checked',b.dataset.v===VIEW); }); };
+$('viewSel').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  if(VIEW===b.dataset.v) return;
+  VIEW=b.dataset.v; localStorage.setItem('sop-view',VIEW); paintView();
+  if($('s-vote').classList.contains('on') && S && $('card') && !$('card').dataset.done) renderCard();
+});
+paintView();
+$('bSmash').onclick=()=>vote(true);
+$('bPass').onclick=()=>vote(false);
+$('undo').onclick=undo;
+$('rankReset').onclick=()=>{S.ranking=[];paintRank()};
+document.addEventListener('keydown',e=>{
+  if(!$('s-vote').classList.contains('on')) return;
+  if(e.key==='ArrowRight') vote(true);
+  if(e.key==='ArrowLeft') vote(false);
+  if(e.key==='Backspace' || (e.key==='z' && (e.ctrlKey||e.metaKey))){ e.preventDefault(); undo(); }
+  if(Z && Z.card===$('card') && ['+','=','-','0'].includes(e.key) && !e.ctrlKey && !e.metaKey){
+    const [x,y]=Z.center(); Z.zoomAt(e.key==='-'?Z.s/1.5:e.key==='0'?1:Z.s*1.5,x,y);
+  }
+});
+</script>
+</body>
+</html>

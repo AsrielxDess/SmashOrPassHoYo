@@ -1,0 +1,21 @@
+SMASH OR PASS — Genshin Impact & Zenless Zone Zero
+==================================================
+
+Lancer : double-clique sur « Lancer Smash or Pass.bat ».
+Le site s'ouvre dans ton navigateur (http://localhost:8765).
+Ferme la fenêtre noire pour l'arrêter.
+
+(Ouvrir index.html directement ne marche pas : le navigateur bloque alors le chargement des modèles 3D.)
+
+Contenu
+- index.html          le site
+- models/             modèles 3D Genshin (.glb), models/zzz/ pour ZZZ
+- tools/pmx2glb.py    convertisseur PMX -> GLB (Blender + extension MMD Tools)
+- lancer.ps1          petit serveur local utilisé par le .bat
+
+Crédits et licences
+- Modèles 3D : © miHoYo / HoYoverse. Licence officielle : usage non commercial,
+  pas de redistribution, pas d'usage R18. Ces fichiers sont pour un usage personnel :
+  ne pas les mettre en ligne ni les partager.
+- Animation de marche : « Basic Cycle Motions 1 (Walking) » par Metra-Philia, licence CC BY-NC-SA.
+- Images des persos : chargées depuis Enka.Network (connexion internet requise).
